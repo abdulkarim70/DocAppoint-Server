@@ -34,8 +34,12 @@ run().catch(console.dir);
 const db= client.db('docdb');
 const appointmentCollection=db.collection('doctorapp')
 
-app.get('/', (req, res) => {
-  res.send('Hello World!')
+
+
+app.get('/appointments',async(req, res)=>{
+const cursor= await appointmentCollection.find()
+const result= await cursor.toArray()
+res.send(result)
 })
 
 app.listen(port, () => {
