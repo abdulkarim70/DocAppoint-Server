@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 dotenv.config();
 
@@ -33,6 +33,12 @@ async function run() {
       const result = await appointmentCollection.find().toArray();
       res.send(result);
     });
+app.get('/appointments/:id',async(req, res)=>{
+const id=req.params.id
+const query={_id: new ObjectId(id)}
+const result=await appointmentCollection.findOne(query)
+res.send(result)
+})
 
     await client.db("admin").command({ ping: 1 });
     console.log("MongoDB Connected");
