@@ -8,7 +8,6 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8080;
 
-// middleware
 app.use(cors());
 app.use(express.json());
 
@@ -22,6 +21,18 @@ const client = new MongoClient(uri, {
   },
 });
 
+
+const verifyToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+
+
+  next();
+};
+
 async function run() {
   try {
     await client.connect();
@@ -29,102 +40,117 @@ async function run() {
     const db = client.db("docdb");
     const appointmentCollection = db.collection("doctorapp");
 
+    // GET all appointments
     app.get("/appointments", async (req, res) => {
-  try {
-    const email = req.query.email; 
-    
-    let query = {};
-    if (email) {
-      query = { userEmail: email }; 
-    }
+      try {
+        const email = req.query.email;
 
-    const result = await appointmentCollection.find(query).toArray();
-    res.send(result);
-  } catch (error) {
-    console.error("Fetch error:", error);
-    res.status(500).send({ message: "Internal Server Error" });
-  }
-});
+        const query = email ? { userEmail: email } : {};
 
+        const result = await appointmentCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
 
+    // ✅ FIXED GET by ID
+    app.get("/appointments/:id", verifyToken, async (req, res) => {
+      try {
+        const id = req.params.id;
 
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid ID" });
+        }
 
+        const query = { _id: new ObjectId(id) };
+        const result = await appointmentCollection.findOne(query);
 
-    
-app.get('/appointments/:id',async(req, res)=>{
-const id=req.params.id
-const query={_id: new ObjectId(id)}
-const result=await appointmentCollection.findOne(query)
-res.send(result)
-})
-app.post("/appointments", async (req, res) => {
-  try {
-    const bookingData = req.body; 
-    
-   
-    const result = await appointmentCollection.insertOne(bookingData);
-    
-   
-    res.status(201).send({ success: true, insertedId: result.insertedId });
-  } catch (error) {
-    console.error("Error saving appointment:", error);
-    res.status(500).send({ success: false, message: "Internal Server Error" });
-  }
-});
+        if (!result) {
+          return res.status(404).send({ message: "Not found" });
+        }
 
-app.delete('/appointments/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) };
-    
-    const result = await appointmentCollection.deleteOne(query);
-    
-    if (result.deletedCount === 1) {
-      res.send({ success: true, message: "Successfully deleted one document." });
-    } else {
-      res.status(404).send({ success: false, message: "No document matches the provided ID." });
-    }
-  } catch (error) {
-    console.error("Delete error:", error);
-    res.status(500).send({ success: false, message: "Internal Server Error" });
-  }
-});
-app.put('/appointments/:id', async (req, res) => {
-  try {
-    const id = req.params.id;
-    const updatedData = req.body; 
-    const filter = { _id: new ObjectId(id) };
-    
-    
-    const updateDoc = {
-      $set: {
-        patientName: updatedData.patientName,
-        gender: updatedData.gender,
-        phone: updatedData.phone,
-        date: updatedData.date,
-        time: updatedData.time,
-        reason: updatedData.reason,
-      },
-    };
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
-    const result = await appointmentCollection.updateOne(filter, updateDoc);
-    
-    if (result.modifiedCount === 1 || result.matchedCount === 1) {
-      res.send({ success: true, message: "Successfully updated the appointment." });
-    } else {
-      res.status(404).send({ success: false, message: "No changes made or document not found." });
-    }
-  } catch (error) {
-    console.error("Update error:", error);
-    res.status(500).send({ success: false, message: "Internal Server Error" });
-  }
-});
+    // POST
+    app.post("/appointments", async (req, res) => {
+      try {
+        const bookingData = req.body;
 
+        const result = await appointmentCollection.insertOne(bookingData);
 
+        res.status(201).send({
+          success: true,
+          insertedId: result.insertedId,
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
 
+    // DELETE
+    app.delete("/appointments/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
 
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid ID" });
+        }
 
+        const result = await appointmentCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
 
+        if (result.deletedCount === 1) {
+          res.send({ success: true });
+        } else {
+          res.status(404).send({ success: false });
+        }
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
+
+    // PUT
+    app.put("/appointments/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const updatedData = req.body;
+
+        if (!ObjectId.isValid(id)) {
+          return res.status(400).send({ message: "Invalid ID" });
+        }
+
+        const filter = { _id: new ObjectId(id) };
+
+        const updateDoc = {
+          $set: {
+            patientName: updatedData.patientName,
+            gender: updatedData.gender,
+            phone: updatedData.phone,
+            date: updatedData.date,
+            time: updatedData.time,
+            reason: updatedData.reason,
+          },
+        };
+
+        const result = await appointmentCollection.updateOne(
+          filter,
+          updateDoc
+        );
+
+        res.send({
+          success: true,
+          modifiedCount: result.modifiedCount,
+        });
+      } catch (error) {
+        res.status(500).send({ message: "Server error" });
+      }
+    });
 
     await client.db("admin").command({ ping: 1 });
     console.log("MongoDB Connected");
