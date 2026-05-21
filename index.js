@@ -55,7 +55,7 @@ async function run() {
     });
 
     // ✅ FIXED GET by ID
-    app.get("/appointments/:id", verifyToken, async (req, res) => {
+    app.get("/appointments/:id", async (req, res) => {
       try {
         const id = req.params.id;
 
