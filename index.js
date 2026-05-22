@@ -38,6 +38,7 @@ async function run() {
     const db = client.db("docdb");
     const appointmentCollection = db.collection("doctorapp");
 
+  
     
     app.get("/doctors", async (req, res) => {
       try {
@@ -49,12 +50,14 @@ async function run() {
       }
     });
 
+    
+
    
     app.get("/appointments", async (req, res) => {
       try {
         const email = req.query.email;
 
-       
+        
         let query = { userEmail: { $exists: true } };
         
         if (email) {
@@ -68,7 +71,7 @@ async function run() {
       }
     });
 
-  
+    // GET single appointment by ID
     app.get("/appointments/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -90,7 +93,7 @@ async function run() {
       }
     });
 
-   
+    // POST a new appointment
     app.post("/appointments", async (req, res) => {
       try {
         const bookingData = req.body;
@@ -106,7 +109,7 @@ async function run() {
       }
     });
 
-   
+    // DELETE an appointment
     app.delete("/appointments/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -129,7 +132,7 @@ async function run() {
       }
     });
 
-  
+    // PUT (Update) an appointment
     app.put("/appointments/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -174,4 +177,4 @@ run();
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
-});  ///
+});
