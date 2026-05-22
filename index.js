@@ -21,14 +21,12 @@ const client = new MongoClient(uri, {
   },
 });
 
-
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) {
     return res.status(401).send({ message: "Unauthorized access" });
   }
-
 
   next();
 };
@@ -40,12 +38,28 @@ async function run() {
     const db = client.db("docdb");
     const appointmentCollection = db.collection("doctorapp");
 
-    // GET all appointments
+    
+    app.get("/doctors", async (req, res) => {
+      try {
+       
+        const result = await appointmentCollection.find({ specialty: { $exists: true } }).toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Internal Server Error" });
+      }
+    });
+
+   
     app.get("/appointments", async (req, res) => {
       try {
         const email = req.query.email;
 
-        const query = email ? { userEmail: email } : {};
+       
+        let query = { userEmail: { $exists: true } };
+        
+        if (email) {
+          query.userEmail = email; 
+        }
 
         const result = await appointmentCollection.find(query).toArray();
         res.send(result);
@@ -54,8 +68,8 @@ async function run() {
       }
     });
 
-    // ✅ FIXED GET by ID
-    app.get("/appointments/:id", verifyToken, async (req, res) => {
+  
+    app.get("/appointments/:id", async (req, res) => {
       try {
         const id = req.params.id;
 
@@ -76,7 +90,7 @@ async function run() {
       }
     });
 
-    // POST
+   
     app.post("/appointments", async (req, res) => {
       try {
         const bookingData = req.body;
@@ -92,7 +106,7 @@ async function run() {
       }
     });
 
-    // DELETE
+   
     app.delete("/appointments/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -115,7 +129,7 @@ async function run() {
       }
     });
 
-    // PUT
+  
     app.put("/appointments/:id", async (req, res) => {
       try {
         const id = req.params.id;
@@ -138,10 +152,7 @@ async function run() {
           },
         };
 
-        const result = await appointmentCollection.updateOne(
-          filter,
-          updateDoc
-        );
+        const result = await appointmentCollection.updateOne(filter, updateDoc);
 
         res.send({
           success: true,
